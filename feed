@@ -1,0 +1,437 @@
+<?php
+session_start();
+include($_SERVER["DOCUMENT_ROOT"] . "/groogr/_includes/start.php");
+
+$ed = new Encrypt_Decrypt();
+$gr = new GroogrBase();
+$g = new General();
+$aff = new Affiliate();
+$ui = new UserIndex("1");
+
+//if ($_GET["email"] == "wangfujun19@yahoo.com"  || $_GET["email"] == "wanfang19@outlook.com") {
+
+$facebook_info = new FacebookInfo();
+
+
+
+
+
+//}
+
+
+
+
+
+
+
+ 
+if (isset($_SESSION["LogOutFaceBook"])) {
+    
+    $FaceLogOut="yes";
+    unset($_SESSION["LogOutFaceBook"]);
+    
+    
+}
+
+
+require_once $root . '/_classes/Facebook/autoload.php';
+include($root . "/_languages/forms/" . $lang . ".php");
+include($root . "/_languages/profile/" . $lang . ".php");
+include($root . "/_languages/index/" . $lang . ".php");
+require_once($root . "/_classes/ip.codehelper.io.php");
+
+//  Check if the Facebook User alredat exists in GROOGR after they click the login button 
+if ($_GET["action"] == "checkfdexist") {
+
+ function initFacePhoto($fb,$facebook_info,$fb_id,$root,$gr){
+        $facebook_info->Facebookid = $fb_id;
+        if ($facebook_info->profilePhotExist($root) === false ){   // user photo does not exist
+            $request = new Facebook\FacebookRequest($fb->getApp(),$accessToken,'GET', '/' . $fb_id  . '/picture?width=9999');
+            $response = $fb->getClient()->sendRequest($request);
+            $facebook_info->savePhoto($response, $root);
+            $UserID = $gr->getTableFieldValue2("Users", "ID", "FacebookID",$fb_id);
+            $ProfileID = $gr->getTableFieldValue2("Profiles", "ID", "UserID",$UserID);
+            $facebook_info->fbSaveProfilePhoto($ProfileID,$root);
+            $facebook_info->userFacebookLink($ProfileID);
+        } 
+    
+    
+}
+    
+    // 检验用户已经登陆了 facebook. 
+   
+    $fb = new Facebook\Facebook([
+        'app_id' => $facebook_app_id,
+        'app_secret' => $facebook_app_secret,
+        'default_graph_version' => 'v2.2',
+    ]);
+    
+    ////////////////////////////////////////////////////////////////   below is for test
+    if ($_GET["email"] == "wangfujun19@111yahoo.com"  || $_GET["email"] == "wanfang19111@outlook.com") {
+            $helper = $fb->getJavaScriptHelper();
+            try {
+                $accessToken = $helper->getAccessToken();
+            } catch (Facebook\Exceptions\FacebookResponseException $e) {
+                // When Graph returns an error
+                echo 'Graph returned an error: ' . $e->getMessage();
+                //goLogin();
+                exit;
+            } catch (Facebook\Exceptions\FacebookSDKException $e) {
+                // When validation fails or other local issues
+                echo 'Facebook SDK returned an error: ' . $e->getMessage();
+               //  goLogin();
+                exit;
+            }
+            $string1 =  "/oauth/access_token?grant_type=fb_exchange_token&client_id=" . $facebook_app_id ."&client_secret=" . $facebook_app_secret . "&fb_exchange_token=" . $accessToken;              
+            $request = new Facebook\FacebookRequest($fb->getApp(),$accessToken,'GET',  $string1);
+            $response = $fb->getClient()->sendRequest($request);
+            $accessToken = $response->getAccessToken();
+            
+            
+            if (isset($accessToken)) {
+                
+                   
+                 echo $accessToken;
+                 exit;
+                $_SESSION["Facebook_token"]=   $accessToken;
+                    
+                   
+                    
+                    exit;
+                    
+                    // get facebook photo
+                    $request = new Facebook\FacebookRequest($fb->getApp(),$accessToken,'GET', '/' . $_GET["fbid"]  . '/picture?width=9999');
+                    $response = $fb->getClient()->sendRequest($request);
+                    $facebook_info->Facebookid = $_GET["fbid"];
+                    $facebook_info->savePhoto($response, $root);
+                    $facebook_info->fbSaveProfilePhoto(2679,$root);
+                    exit;
+                    
+                    
+                    echo "<p>";
+                    echo $accessToken;
+                    echo "<p>";
+
+                    
+
+                    var_dump($response);
+                    
+                                   $request = new Facebook\FacebookRequest($fb->getApp(),$accessToken,'GET', '/' . $_GET["fbid"]  . '/picture?width=9999');
+                    $response = $fb->getClient()->sendRequest($request);
+                    var_dump($response);
+                    
+                    var_dump($_GET["fbid"]);
+                    
+                    $_SESSION["sadfasdfasdf00"] = "asdfasdfasdfasdf";
+                    
+                    
+                    
+                    exit;
+            } else {
+                goLogin();
+            }
+            echo "---------";
+            exit;
+    }
+    //////////////////////////////////////////////////////////////// above is for test
+
+    
+    // get login session from php, ensure security
+    $helper = $fb->getJavaScriptHelper();
+    try {
+        $accessToken = $helper->getAccessToken();
+    } catch (Facebook\Exceptions\FacebookResponseException $e) {
+        // When Graph returns an error
+        //echo 'Graph returned an error: ' . $e->getMessage();
+        goLogin();
+        exit;
+    } catch (Facebook\Exceptions\FacebookSDKException $e) {
+        // When validation fails or other local issues
+        //echo 'Facebook SDK returned an error: ' . $e->getMessage();
+        goLogin();
+        exit;
+    }
+    // Exchange a long access token 
+    $string1 =  "/oauth/access_token?grant_type=fb_exchange_token&client_id=" . $facebook_app_id ."&client_secret=" . $facebook_app_secret . "&fb_exchange_token=" . $accessToken;              
+    $request = new Facebook\FacebookRequest($fb->getApp(),$accessToken,'GET',  $string1);
+    $response = $fb->getClient()->sendRequest($request);
+    $accessToken = $response->getAccessToken();    
+    
+
+    if (isset($accessToken)) {
+        $_SESSION["Facebook_accessToken"] = $accessToken;
+        // use has login 
+    } else {
+        goLogin();
+  
+    }
+
+    
+
+
+    //  存在安全问题。该文件可能通过直接调用，location.href="/facebook_login.php?action=checkfdexist&email=" + email; 从而在不验证 facebook 是否登陆的情况下登陆系统。
+    //  解决方案： 应该验证用户已经登陆了 facebook  
+
+    if (preg_match("/groogr.com/", $_SERVER['HTTP_REFERER']) == false) {
+        echo "001";   //  this is an uncorrect call 
+        exit;
+    }
+    $email = $_GET["email"];
+    $fb_id = $_GET["fbid"];
+
+    // if this is not an email , exit
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+        
+    } else {
+        echo("Error 002:  We can not get your facebook email. An email is needed to register. Please register with your email");  // the email is not correct;
+        exit;
+    }
+
+    // Search user list to find if the user email and facebook id alreday exist
+    $count = $gr->getRecordsCount("Users", "Email='" . $email . "'");
+    $count2 = $gr->getRecordsCount("Users", "Valid= 1 and FacebookID='" . $fb_id . "'");
+    
+    //if ($email == "wanfang19@outlook.com"  || $email == "wanfju19@gmail.com"  || $email == "xihuantingyu19@yahoo.ca" ) {
+        
+    //} else {
+    //    echo 'On test. ';
+    //    exit;
+    // }
+    
+    
+    // if this facebook id is is alreday exist. it means user alreday register with facebook, log in directly
+    if ($count2 === 1) {
+        $sendEmail = new SendEmail();
+        $sendEmail->sendOneEmail("wangfujun19@yahoo.com", "One user is log in with Facebook" ,"Groogr Log in","Login from Facebook " .$_GET["first_name"]  .  " " . $_GET["last_name"] );        
+        $email_face = $gr->getTableFieldValue2("Users", "Email", "FacebookID", $fb_id);
+        $_SESSION["facebook_user_email"] = $email_face;
+        
+    
+        // if the user do not have a photo , then get the facebook photo and insert the photot to user master profile
+        
+        initFacePhoto($fb,$facebook_info,$fb_id,$root,$gr);
+        include($root . "/user/login/index.php");
+        //goLogin();
+        exit;
+    }
+
+    // email alreday exist  如果该电子邮件已经在系统中注册  it means use have registered with an email , but this time log in with a facebook has the same email as the GROOGR email account
+    if ($count === 1) {
+      
+        $sendEmail = new SendEmail();
+        $sendEmail->sendOneEmail("wangfujun19@yahoo.com", "One user is log in with Facebook" ,"Groogr Log in","Login from Facebook " .$_GET["first_name"]  .  " " . $_GET["last_name"] );          
+        
+        $FacebookID =  $gr->getTableFieldValue2("Users", "FacebookID", "Email", $email);
+        if (strlen($FacebookID) < 3) {
+            $gr->UpdateOneRow("Users", array("FacebookID" => $_GET["fbid"]), array("Email" => "'" . $email .  "'"));
+            $gr->UpdateOneRow("Users", array("Valid" => 1), array("Email" => "'" . $email .  "'"));
+        }
+        
+        $_SESSION["facebook_user_email"] = $email;
+
+    
+        // if the user do not have a photo , then get the facebook photo and insert the photot to user master profile
+        initFacePhoto($fb,$facebook_info,$fb_id,$root,$gr);       
+        
+        
+        include($root . "/user/login/index.php");
+        exit;
+    }
+
+    // emmail does not exist; 电子邮件还没有在系统中注册，注册该电子邮件
+    if ($count === 0) {
+        
+     $sendEmail = new SendEmail();
+        $sendEmail->sendOneEmail("wangfujun19@yahoo.com", "A new user is registered from Facebook" ,"Groogr New User Notification","Registered from Facebook " .$_GET["first_name"]  .  " " . $_GET["last_name"] );
+        $sendEmail->sendOneEmail("ericpichette@me.com", "A new user is registered from Facebook" ,"Groogr New User Notification","Registered from Facebook: " . $_GET["first_name"]  .  " " . $_GET["last_name"] );
+  
+        
+        $_SESSION["fb_register"] = true;
+        $_SESSION["fb_email"] = $email;
+        $_SESSION["fb_id"] = $_GET["fbid"];
+        $_SESSION["fb_first_name"] = $_GET["first_name"];
+        $_SESSION["fb_last_name"] = $_GET["last_name"];
+        $_SESSION["fb_gender"] = $_GET["gender"];
+
+
+        //initFacePhoto($fb,$facebook_info,$fb_id,$root,$gr); 
+        include($root . "/user/register/facebook.php");
+        exit;
+        
+        
+        
+        try {
+            // Returns a `Facebook\FacebookResponse` object
+            $response = $fb->get('/me', $accessToken);
+        } catch (Facebook\Exceptions\FacebookResponseException $e) {
+            echo 'Graph returned an error: ' . $e->getMessage();
+            exit;
+        } catch (Facebook\Exceptions\FacebookSDKException $e) {
+            echo 'Facebook SDK returned an error: ' . $e->getMessage();
+            exit;
+        }
+
+        $user = $response->getGraphUser();
+        //var_dump($user);
+
+
+        $request = $fb->request('GET', '/' . $_GET["fbid"], array(), $accessToken);
+
+        // Send the request to Graph
+        try {
+            $response = $fb->getClient()->sendRequest($request);
+        } catch (Facebook\Exceptions\FacebookResponseException $e) {
+            // When Graph returns an error
+            echo 'Graph returned an error: ' . $e->getMessage();
+            exit;
+        } catch (Facebook\Exceptions\FacebookSDKException $e) {
+            // When validation fails or other local issues
+            echo 'Facebook SDK returned an error: ' . $e->getMessage();
+            exit;
+        }
+
+        $graphNode = $response->getGraphNode();
+
+        $graphObject = $response->getGraphObject();
+
+        var_dump($graphObject);
+
+
+        exit;
+    }
+    exit;
+}
+
+function goLogin() {
+    ?>
+
+    <script>
+        location.href = "/user/login";
+    </script>
+
+
+    <?php
+}
+?>
+
+
+
+<script>
+
+     
+    // This is called with the results from from FB.getLoginStatus().
+    function statusChangeCallback(response) {
+        if (response.status === 'connected') {
+            // if this has a logout facebook variable, then log the facebook out
+            <?php  if ($FaceLogOut=="yes")   {   ?>
+                  FB.logout(function(response) {
+                      location.reload();
+                  });
+                  return;
+            <?php  
+              }  
+            ?>             
+
+            // log in groogr with facebook account
+            LoginUserFaceBook(response.authResponse.userID, response.authResponse.accessToken);
+            
+        } else if (response.status === 'not_authorized') {
+            // The person is logged into Facebook, but not your app.
+            document.getElementById('status').innerHTML = 'Please log ' +
+                    'into this app.';
+        } else {
+            // The person is not logged into Facebook, so we're not sure if
+            // they are logged into this app or not.
+            document.getElementById('status').innerHTML = 'Please log ' +
+                    'into Facebook.';
+        }
+    }
+
+    // This function is called when someone finishes with the Login
+    // Button.  See the onlogin handler attached to it in the sample
+    // code below.
+    function checkLoginState1() {
+        
+       
+        FB.getLoginStatus(function(response) {
+            statusChangeCallback(response);
+        });
+    }
+    
+    // log in function 
+    function LoginUserFaceBook(facebookID, token) {
+        FB.api('/me', function(response) {
+             //alert(JSON.stringify(response));
+            //return;
+            fbid = response.id;
+            first_name = encodeURI(response.first_name);
+            last_name = encodeURI(response.last_name);
+            facebook_email = encodeURI(response.email);
+            gender = response.gender;
+            location.href = "/facebook_login.php?action=checkfdexist&email=" + facebook_email + "&token=" + token + "&first_name=" + first_name + "&last_name=" + last_name + "&gender=" + gender + "&fbid=" + fbid;
+            return;
+        });
+    }
+    
+    
+
+    window.fbAsyncInit = function() {
+        FB.init({
+            appId: '633002503431842',
+            cookie: true, // enable cookies to allow the server to access 
+            // the session
+            xfbml: true, // parse social plugins on this page
+            version: 'v2.2' // use version 2.2
+        });
+
+        // Now that we've initialized the JavaScript SDK, we call 
+        // FB.getLoginStatus().  This function gets the state of the
+        // person visiting this page and can return one of three states to
+        // the callback you provide.  They can be:
+        //
+        // 1. Logged into your app ('connected')
+        // 2. Logged into Facebook, but not your app ('not_authorized')
+        // 3. Not logged into Facebook and can't tell if they are logged into
+        //    your app or not.
+        //
+        // These three cases are handled in the callback function.
+
+
+           // if this is an log out page of facebook . 
+           <?php  if ($FaceLogOut=="yes")   { ?>
+                FB.getLoginStatus(function(response) {
+                   statusChangeCallback(response);
+                 });
+           <?php }  ?>  
+    };
+
+    // Load the SDK asynchronously
+    (function(d, s, id) {
+        var js, fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id))
+            return;
+        js = d.createElement(s);
+        js.id = id;
+        js.src = "//connect.facebook.net/en_US/sdk.js";
+        fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'facebook-jssdk'));
+
+
+
+
+
+
+
+</script>
+
+
+
+
+<?php
+
+
+
+
+?>
+
